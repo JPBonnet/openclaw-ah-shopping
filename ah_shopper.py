@@ -2,11 +2,14 @@
 """
 Albert Heijn Automated Shopping Tool
 Automates adding items to AH cart using Selenium
+Credentials: Environment variables (AH_EMAIL, AH_PASSWORD) or interactive prompt
 """
 
 import json
 import time
 import sys
+import os
+import getpass
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -17,16 +20,35 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 class AHShopper:
     def __init__(self, config_path="config.json"):
         self.config = self._load_config(config_path)
+        self.email = None
+        self.password = None
         self.driver = None
         self.cart_total = 0
+        self._get_credentials()
         
     def _load_config(self, path):
-        """Load shopping config from JSON"""
+        """Load shopping config from JSON (items only, no credentials)"""
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except FileNotFoundError:
             print(f"❌ Config file not found: {path}")
+            sys.exit(1)
+            
+    def _get_credentials(self):
+        """Get credentials from environment variables or prompt user"""
+        # Try environment variables first
+        self.email = os.getenv("AH_EMAIL")
+        self.password = os.getenv("AH_PASSWORD")
+        
+        # If not in env vars, ask user
+        if not self.email:
+            self.email = input("📧 AH Email: ").strip()
+        if not self.password:
+            self.password = getpass.getpass("🔐 AH Password: ")
+            
+        if not self.email or not self.password:
+            print("❌ Email and password required!")
             sys.exit(1)
             
     def _init_driver(self):
@@ -48,9 +70,9 @@ class AHShopper:
             self.driver.quit()
             print("✅ Browser closed")
             
-    def login(self, email, password):
-        """Login to AH account"""
-        print(f"🔐 Logging in as {email}...")
+    def login(self):
+        """Login to AH account using stored credentials"""
+        print(f"🔐 Logging in as {self.email}...")
         self.driver.get("https://www.ah.nl")
         
         try:
@@ -66,11 +88,11 @@ class AHShopper:
             
             # Enter email
             email_field = self.driver.find_element(By.ID, "login-email")
-            email_field.send_keys(email)
+            email_field.send_keys(self.email)
             
             # Enter password
             pwd_field = self.driver.find_element(By.ID, "login-password")
-            pwd_field.send_keys(password)
+            pwd_field.send_keys(self.password)
             
             # Submit
             submit_btn = self.driver.find_element(By.XPATH, "//button[@type='submit']")
@@ -142,10 +164,7 @@ class AHShopper:
             self.start()
             
             # Login
-            if not self.login(
-                self.config["credentials"]["email"],
-                self.config["credentials"]["password"]
-            ):
+            if not self.login():
                 return
             
             time.sleep(2)

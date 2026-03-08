@@ -27,8 +27,34 @@ cd openclaw-ah-shopping
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure your account
-nano config.json  # Edit with your AH email & password
+# config.json has items only — credentials are handled securely
+```
+
+### Credentials (No GitHub Storage!)
+
+Choose one method:
+
+**Method 1: Interactive Prompt** (Easiest)
+```bash
+python ah_shopper.py
+# Script prompts for email & password each time
+```
+
+**Method 2: Environment Variables** (Reusable)
+```bash
+export AH_EMAIL="your@email.com"
+export AH_PASSWORD="yourpassword"
+python ah_shopper.py
+```
+
+**Method 3: .env File** (Local, gitignored)
+```bash
+# Create .env file (gitignore'ed)
+echo "AH_EMAIL=your@email.com" > .env
+echo "AH_PASSWORD=yourpassword" >> .env
+chmod 600 .env
+
+python ah_shopper.py  # Reads from .env
 ```
 
 ## Usage
@@ -42,10 +68,6 @@ python ah_shopper.py
 
 ```json
 {
-  "credentials": {
-    "email": "your.email@example.com",
-    "password": "your-password"
-  },
   "items": [
     {
       "name": "AH Kipfilet",
@@ -58,17 +80,21 @@ python ah_shopper.py
 ```
 
 **Options:**
-- `credentials.email`: Your AH account email
-- `credentials.password`: Your AH account password  
 - `items`: List of products to add (name + quantity)
 - `auto_checkout`: Go to checkout after adding items
 - `keep_browser_open`: Keep browser open after script ends
 
+**Credentials:** Handled via environment variables or interactive prompt (see above)
+
 ## Example: Weekly Shopping
 
-```json
+```bash
+# Set credentials
+export AH_EMAIL="your@email.com"
+export AH_PASSWORD="yourpassword"
+
+# Update config.json with your items
 {
-  "credentials": {...},
   "items": [
     {"name": "AH Kipfilet 800g", "quantity": 1},
     {"name": "AH Rundergehakt", "quantity": 2},
@@ -78,10 +104,8 @@ python ah_shopper.py
   "auto_checkout": false,
   "keep_browser_open": true
 }
-```
 
-Run it:
-```bash
+# Run it
 python ah_shopper.py
 ```
 
@@ -112,18 +136,10 @@ options.add_argument("--headless")
 
 ## Security
 
-⚠️ **Never commit config.json with real credentials!**
-
-```bash
-# Add to .gitignore
-echo "config.json" >> .gitignore
-```
-
-Or use environment variables:
-```bash
-export AH_EMAIL="your@email.com"
-export AH_PASSWORD="password"
-```
+✅ **Credentials are NEVER stored in config.json!**
+- Use environment variables (AH_EMAIL, AH_PASSWORD)
+- Or interactive prompt (getpass)
+- config.json is safe to commit (contains only items)
 
 ## Future (ClawHub Skill)
 
