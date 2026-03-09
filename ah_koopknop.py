@@ -39,7 +39,7 @@ SKIP_TERMS = ["maaltijdmix", "honig mix", "babyvoeding", "aanbieding pakket", "m
 def search_product(connector: AHApi, query: str, size: int = 6) -> dict | None:
     """
     Search for a product and return the best match.
-    Returns dict with webshopId, title, price, isBonus — or None if not found.
+    Returns normalized product dict or None if not found.
     """
     try:
         products = connector.search(query=query, size=size)
@@ -51,16 +51,10 @@ def search_product(connector: AHApi, query: str, size: int = 6) -> dict | None:
             if any(skip in title for skip in SKIP_TERMS):
                 continue
 
-            web_id = product.get("webshopId")
-            if not web_id:
+            if not product.get("webshopId"):
                 continue
 
-            return {
-                "webshopId": str(web_id),
-                "title": product.get("title", ""),
-                "price": product.get("priceBeforeBonus") or product.get("price", 0),
-                "isBonus": product.get("isBonus", False),
-            }
+            return product
 
         return None  # No suitable match found
 
