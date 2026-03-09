@@ -1,1 +1,1 @@
-supermarktconnector
+supermarktconnector==0.4.0
