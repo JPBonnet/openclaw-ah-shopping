@@ -19,7 +19,7 @@ How it works:
 import json
 import sys
 import argparse
-from supermarktconnector.ah import AHConnector
+from ah_api import AHApi
 
 
 # ──────────────────────────────────────────
@@ -36,14 +36,13 @@ SKIP_TERMS = ["maaltijdmix", "honig mix", "babyvoeding", "aanbieding pakket", "m
 # Product search
 # ──────────────────────────────────────────
 
-def search_product(connector: AHConnector, query: str, size: int = 6) -> dict | None:
+def search_product(connector: AHApi, query: str, size: int = 6) -> dict | None:
     """
     Search for a product and return the best match.
     Returns dict with webshopId, title, price, isBonus — or None if not found.
     """
     try:
-        results = connector.search_products(query=query, size=size)
-        products = results.get("products", [])
+        products = connector.search(query=query, size=size)
 
         for product in products:
             title = product.get("title", "").lower()
@@ -105,7 +104,7 @@ def run(items_file: str = DEFAULT_ITEMS_FILE):
 
     print(f"🛒 Searching AH for {len(items)} items...\n")
 
-    connector = AHConnector()
+    connector = AHApi()
     found = []
     not_found = []
     total_price = 0.0
