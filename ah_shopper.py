@@ -36,12 +36,32 @@ class AHShopper:
             sys.exit(1)
             
     def _get_credentials(self):
-        """Get credentials from environment variables or prompt user"""
-        # Try environment variables first
+        """Get credentials from OpenClaw secrets, env vars, or prompt"""
+        self.email = None
+        self.password = None
+        
+        # Try OpenClaw secrets first (.secrets.json)
+        try:
+            secrets_path = os.path.expanduser("~/.openclaw/workspace/.secrets.json")
+            if os.path.exists(secrets_path):
+                with open(secrets_path, 'r') as f:
+                    secrets = json.load(f)
+                    if 'ah' in secrets:
+                        self.email = secrets['ah'].get('email')
+                        self.password = secrets['ah'].get('password')
+                        if self.email and self.password:
+                            return  # Found in secrets, done
+        except Exception as e:
+            pass  # Fallback to env vars
+        
+        # Try environment variables
         self.email = os.getenv("AH_EMAIL")
         self.password = os.getenv("AH_PASSWORD")
         
-        # If not in env vars, ask user
+        if self.email and self.password:
+            return  # Found in env vars
+        
+        # Ask user
         if not self.email:
             self.email = input("📧 AH Email: ").strip()
         if not self.password:
@@ -54,9 +74,11 @@ class AHShopper:
     def _init_driver(self):
         """Initialize Chrome driver"""
         options = webdriver.ChromeOptions()
-        # options.add_argument("--headless")  # Uncomment for headless mode
+        options.add_argument("--headless")  # Headless mode (no display needed)
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-extensions")
         self.driver = webdriver.Chrome(options=options)
         
     def start(self):
