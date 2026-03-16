@@ -292,3 +292,22 @@ class AHApi:
         """Get subcategories for a given category id."""
         resp = self._request("GET", _SUBCATEGORIES_URL.format(category_id))
         return resp.json()
+
+
+# ── CLI Entry Point ───────────────────────────────────────
+
+if __name__ == "__main__":
+    import argparse
+    import json
+    
+    parser = argparse.ArgumentParser(description="AH product search API")
+    parser.add_argument("--search", type=str, help="Search query")
+    parser.add_argument("--limit", type=int, default=10, help="Result limit")
+    args = parser.parse_args()
+    
+    if args.search:
+        client = AHApi()
+        results = client.search(args.search, size=args.limit)
+        print(json.dumps(results, indent=2, ensure_ascii=False))
+    else:
+        parser.print_help()
