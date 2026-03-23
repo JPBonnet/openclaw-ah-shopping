@@ -19,6 +19,13 @@ build/
 *.swp
 *.swo
 
+# Auto-generated data
+matched_products.json
+order_history.json
+
 # OS
 .DS_Store
 .env
+
+# Test
+.pytest_cache/

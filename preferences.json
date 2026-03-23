@@ -1,0 +1,101 @@
+{
+  "family": {
+    "members": [
+      {
+        "name": "JP",
+        "age": 30,
+        "gender": "male",
+        "activity_level": "moderate",
+        "pregnant": false,
+        "dietary_restrictions": [],
+        "notes": ""
+      },
+      {
+        "name": "Inidri",
+        "age": 30,
+        "gender": "female",
+        "activity_level": "moderate",
+        "pregnant": true,
+        "dietary_restrictions": ["no_fish"],
+        "notes": "No vis/fish"
+      },
+      {
+        "name": "Roux",
+        "age": 3,
+        "gender": "male",
+        "activity_level": "active",
+        "pregnant": false,
+        "dietary_restrictions": [],
+        "notes": "Toddler, smaller portions"
+      }
+    ],
+    "default_servings": 2
+  },
+  "budget": {
+    "max_weekly_euros": 150,
+    "prefer_bonus": true,
+    "prefer_budget_items": true
+  },
+  "equipment": {
+    "available": ["airfryer", "kookplaat", "wok", "stoofpot", "magnetron"],
+    "not_available": ["oven"],
+    "notes": "No oven — use airfryer as replacement where possible"
+  },
+  "brand_preferences": {
+    "preferred_brands": {
+      "koffie": "Perla",
+      "default": "AH huismerk"
+    },
+    "brand_scores": {
+      "Perla": 15,
+      "AH": 10,
+      "AH Biologisch": 10,
+      "AH Terra": 8
+    },
+    "avoid_brands": []
+  },
+  "protein_preferences": {
+    "avoid": ["kipfilet"],
+    "prefer": ["kipstukjes", "kippendijen", "kipbouten", "kipdrumsticks"],
+    "notes": "Never kipfilet — always kipstukjes, kippendijen, kipbouten, or kipdrumsticks"
+  },
+  "dietary": {
+    "avoid_ingredients": ["koriander", "cilantro", "coriander"],
+    "allergies": [],
+    "notes": "Inidri eats no fish. No koriander in any recipe."
+  },
+  "store_preferences": {
+    "primary": "AH",
+    "secondary": null,
+    "delivery": true,
+    "pickup": false
+  },
+  "frequently_bought": [
+    {"name": "melk", "frequency": "weekly", "quantity": 2},
+    {"name": "eieren", "frequency": "weekly", "quantity": 1},
+    {"name": "Perla filterkoffie", "frequency": "weekly", "quantity": 1},
+    {"name": "brood", "frequency": "weekly", "quantity": 2},
+    {"name": "kaas", "frequency": "weekly", "quantity": 1},
+    {"name": "boter", "frequency": "biweekly", "quantity": 1},
+    {"name": "rijst", "frequency": "biweekly", "quantity": 1},
+    {"name": "pasta", "frequency": "biweekly", "quantity": 1},
+    {"name": "appels", "frequency": "weekly", "quantity": 1},
+    {"name": "bananen", "frequency": "weekly", "quantity": 1},
+    {"name": "uien", "frequency": "weekly", "quantity": 1},
+    {"name": "knoflook", "frequency": "biweekly", "quantity": 1},
+    {"name": "tomaten", "frequency": "weekly", "quantity": 1},
+    {"name": "komkommer", "frequency": "weekly", "quantity": 1},
+    {"name": "paprika", "frequency": "weekly", "quantity": 1},
+    {"name": "aardappelen", "frequency": "weekly", "quantity": 1},
+    {"name": "wortels", "frequency": "weekly", "quantity": 1},
+    {"name": "kipstukjes", "frequency": "weekly", "quantity": 1},
+    {"name": "rundergehakt", "frequency": "weekly", "quantity": 1}
+  ],
+  "meal_preferences": {
+    "cuisines": ["Nederlands", "Italiaans", "Aziatisch", "Mexicaans", "Indiaas"],
+    "max_prep_time_weekday_min": 30,
+    "max_prep_time_weekend_min": 60,
+    "difficulty": ["easy", "medium"],
+    "prefer_kid_friendly": true
+  }
+}
