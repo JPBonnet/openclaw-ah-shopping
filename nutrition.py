@@ -561,6 +561,175 @@ def format_nutrition_summary(weekly: dict, family: list[FamilyMember]) -> str:
     return "\n".join(lines)
 
 
+def calculate_member_portion(member: FamilyMember, adult_servings: float = 1.0) -> float:
+    """Calculate portion size for a family member relative to an adult serving.
+
+    Toddlers (age <= 5) get 50% of an adult serving.
+    Children (6-12) get 75% of an adult serving.
+    Adults and teens get full servings.
+
+    Args:
+        member: The family member.
+        adult_servings: Base adult serving count.
+
+    Returns:
+        Adjusted serving size.
+    """
+    if member.age <= 5:
+        return adult_servings * 0.5
+    elif member.age <= 12:
+        return adult_servings * 0.75
+    return adult_servings
+
+
+def check_calorie_warnings(
+    recipe: dict,
+    family: list[FamilyMember],
+    threshold_pct: float = 0.40,
+) -> list[dict]:
+    """Check if a dinner exceeds a percentage of daily intake for any family member.
+
+    Args:
+        recipe: Recipe dict with nutrition data.
+        family: List of FamilyMember instances.
+        threshold_pct: Warning threshold as fraction of daily calories (default 40%).
+
+    Returns:
+        List of warning dicts with member name, meal calories, daily calories,
+        and percentage. Empty list if no warnings.
+    """
+    meal = calculate_meal_nutrition(recipe, servings_consumed=1)
+    meal_cals = meal["calories"]
+    warnings: list[dict] = []
+
+    for member in family:
+        portion = calculate_member_portion(member)
+        member_cals = round(meal_cals * portion)
+        daily = member.daily_calories
+        if daily > 0:
+            pct = member_cals / daily
+            if pct > threshold_pct:
+                warnings.append({
+                    "member": member.name,
+                    "meal_name": meal["name"],
+                    "meal_calories": member_cals,
+                    "daily_calories": daily,
+                    "percentage": round(pct * 100, 1),
+                    "warning": (
+                        f"{member.name}: dinner is {round(pct * 100)}% of daily intake "
+                        f"({member_cals}/{daily} kcal)"
+                    ),
+                })
+
+    return warnings
+
+
+def calculate_weekly_calorie_budget(
+    recipes: list[dict],
+    family: list[FamilyMember],
+    num_dinners: int = 5,
+) -> dict:
+    """Track weekly calorie budget across dinners for each family member.
+
+    Sums calories for the given dinner recipes and compares to weekly needs
+    (dinner is assumed to be ~35% of daily intake, so weekly dinner budget
+    = daily_calories * 0.35 * num_dinners).
+
+    Args:
+        recipes: List of recipe dicts (one per dinner).
+        family: List of FamilyMember instances.
+        num_dinners: Number of dinners in the week (default 5).
+
+    Returns:
+        Dict with per-member weekly budget comparison.
+    """
+    results: list[dict] = []
+
+    for member in family:
+        portion = calculate_member_portion(member)
+        total_dinner_cals = 0
+        for recipe in recipes[:num_dinners]:
+            meal = calculate_meal_nutrition(recipe, servings_consumed=1)
+            total_dinner_cals += round(meal["calories"] * portion)
+
+        weekly_daily_total = member.daily_calories * num_dinners
+        dinner_budget = round(weekly_daily_total * 0.35)
+
+        results.append({
+            "member": member.name,
+            "total_dinner_calories": total_dinner_cals,
+            "weekly_dinner_budget": dinner_budget,
+            "diff": total_dinner_cals - dinner_budget,
+            "pct": round(total_dinner_cals / dinner_budget * 100) if dinner_budget > 0 else 0,
+            "status": (
+                "over budget" if total_dinner_cals > dinner_budget * 1.15
+                else "under budget" if total_dinner_cals < dinner_budget * 0.85
+                else "on track"
+            ),
+        })
+
+    return {
+        "num_dinners": min(num_dinners, len(recipes)),
+        "members": results,
+    }
+
+
+def format_meal_card(
+    recipe: dict,
+    family: list[FamilyMember],
+) -> str:
+    """Format a Telegram-style nutrition card for a single meal.
+
+    Shows per-person portion-adjusted calories and macro breakdown,
+    plus any calorie warnings.
+
+    Args:
+        recipe: Recipe dict with nutrition data.
+        family: List of FamilyMember instances.
+
+    Returns:
+        Telegram-formatted markdown string.
+    """
+    meal = calculate_meal_nutrition(recipe, servings_consumed=1)
+    warnings = check_calorie_warnings(recipe, family)
+    warning_members = {w["member"] for w in warnings}
+
+    lines: list[str] = []
+    name = meal["name"]
+    lines.append(f"*{name}*")
+    lines.append(
+        f"Per portie: {meal['calories']} kcal | "
+        f"{meal['protein_g']}g eiwit | "
+        f"{meal['carbs_g']}g koolh | "
+        f"{meal['fat_g']}g vet"
+    )
+    lines.append("")
+
+    for member in family:
+        portion = calculate_member_portion(member)
+        adj_cals = round(meal["calories"] * portion)
+        adj_prot = round(meal["protein_g"] * portion)
+        adj_carb = round(meal["carbs_g"] * portion)
+        adj_fat = round(meal["fat_g"] * portion)
+        pct = round(adj_cals / member.daily_calories * 100) if member.daily_calories > 0 else 0
+
+        warn_icon = " ⚠️" if member.name in warning_members else ""
+        portion_label = f" ({round(portion * 100)}%)" if portion != 1.0 else ""
+
+        lines.append(
+            f"*{member.name}*{portion_label}: "
+            f"{adj_cals} kcal ({pct}% dagelijks){warn_icon} | "
+            f"{adj_prot}g E | {adj_carb}g K | {adj_fat}g V"
+        )
+
+    if warnings:
+        lines.append("")
+        for w in warnings:
+            lines.append(f"⚠️ {w['warning']}")
+
+    return "\n".join(lines)
+
+
 def _load_recipes(path: str) -> list[dict]:
     """Load recipes from JSON file.
 

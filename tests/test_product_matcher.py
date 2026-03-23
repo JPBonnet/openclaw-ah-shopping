@@ -21,7 +21,10 @@ from product_matcher import (
     load_preferences,
     load_cache,
     save_cache,
+    load_ingredient_aliases,
+    resolve_alias,
     PANTRY_ITEMS,
+    SKIP_TERMS,
 )
 
 
@@ -183,3 +186,120 @@ class TestCache:
     def test_load_empty_cache(self, tmp_path):
         result = load_cache(str(tmp_path / "nonexistent.json"))
         assert result == {}
+
+
+class TestIngredientAliases:
+    """Tests for ingredient alias resolution."""
+
+    def test_load_aliases_from_file(self, tmp_path):
+        alias_file = tmp_path / "test_aliases.json"
+        alias_file.write_text(json.dumps({
+            "kipstukjes": "AH scharrel kipfilet stukjes roerbak",
+            "kipbouten": "AH scharrel kipdrumsticks",
+        }), encoding="utf-8")
+        aliases = load_ingredient_aliases(str(alias_file))
+        assert aliases["kipstukjes"] == "AH scharrel kipfilet stukjes roerbak"
+        assert aliases["kipbouten"] == "AH scharrel kipdrumsticks"
+
+    def test_load_aliases_missing_file(self, tmp_path):
+        result = load_ingredient_aliases(str(tmp_path / "nonexistent.json"))
+        assert result == {}
+
+    def test_resolve_alias_exists(self):
+        aliases = {
+            "kipstukjes": "AH scharrel kipfilet stukjes roerbak",
+            "kippendijen": "AH scharrel kipdijfilet",
+        }
+        assert resolve_alias("kipstukjes", aliases) == "AH scharrel kipfilet stukjes roerbak"
+        assert resolve_alias("kippendijen", aliases) == "AH scharrel kipdijfilet"
+
+    def test_resolve_alias_case_insensitive(self):
+        aliases = {"kipstukjes": "AH scharrel kipfilet stukjes roerbak"}
+        assert resolve_alias("Kipstukjes", aliases) == "AH scharrel kipfilet stukjes roerbak"
+
+    def test_resolve_alias_not_found(self):
+        aliases = {"kipstukjes": "AH scharrel kipfilet stukjes roerbak"}
+        assert resolve_alias("spaghetti", aliases) == "spaghetti"
+
+    def test_resolve_alias_strips_whitespace(self):
+        aliases = {"kipstukjes": "AH scharrel kipfilet stukjes roerbak"}
+        assert resolve_alias("  kipstukjes  ", aliases) == "AH scharrel kipfilet stukjes roerbak"
+
+
+class TestPlantBasedFiltering:
+    """Tests that plant-based products are filtered out when searching meat."""
+
+    def test_skip_terms_include_plant_based(self):
+        """SKIP_TERMS must contain plant-based indicators."""
+        for term in ["plantaardig", "terra", "vivera", "vegan", "vegetarisch"]:
+            assert term in SKIP_TERMS, f"'{term}' should be in SKIP_TERMS"
+
+    def test_plant_based_product_skipped(self, sample_preferences):
+        """A product with 'plantaardig' in title should be skipped."""
+        plant_product = {
+            "webshopId": "999",
+            "title": "AH Terra Plantaardig gehakt",
+            "brand": "AH Terra",
+            "price": 2.99,
+            "bonusPrice": None,
+            "unitSize": "250 g",
+            "unitPriceDescription": "€11.96 per kg",
+            "isBonus": False,
+            "availableOnline": True,
+            "nutriscore": "A",
+            "discountLabels": [],
+        }
+        title = plant_product["title"].lower()
+        assert any(skip in title for skip in SKIP_TERMS)
+
+    def test_vivera_product_skipped(self):
+        """A product with 'vivera' in title should be skipped."""
+        title = "Vivera Plantaardige Kipstukjes".lower()
+        assert any(skip in title for skip in SKIP_TERMS)
+
+    def test_real_meat_not_skipped(self):
+        """Normal meat products should NOT be skipped."""
+        title = "AH Scharrel kipfilet stukjes roerbak".lower()
+        assert not any(skip in title for skip in SKIP_TERMS)
+
+
+class TestAHHuismerkScoring:
+    """Tests for AH huismerk title-based bonus scoring."""
+
+    def test_ah_title_gets_brand_points(self):
+        """Product with title starting 'AH ' should get brand points even without brand field match."""
+        product = {
+            "webshopId": "111",
+            "title": "AH Scharrel kipfilet stukjes",
+            "brand": "",
+            "price": 4.99,
+            "bonusPrice": None,
+            "unitSize": "450 g",
+            "unitPriceDescription": "€11.09 per kg",
+            "isBonus": False,
+            "availableOnline": True,
+            "nutriscore": "A",
+            "discountLabels": [],
+        }
+        brand_scores = {"AH": 10, "Perla": 15}
+        result = score_product(product, "kipstukjes", 450, "g", brand_scores=brand_scores)
+        assert result["breakdown"]["brand"] == 10
+
+    def test_non_ah_title_no_bonus(self):
+        """Product without 'AH ' prefix and no brand match should get 0 brand points."""
+        product = {
+            "webshopId": "222",
+            "title": "Kipstukjes naturel",
+            "brand": "",
+            "price": 5.49,
+            "bonusPrice": None,
+            "unitSize": "450 g",
+            "unitPriceDescription": "€12.20 per kg",
+            "isBonus": False,
+            "availableOnline": True,
+            "nutriscore": "B",
+            "discountLabels": [],
+        }
+        brand_scores = {"AH": 10, "Perla": 15}
+        result = score_product(product, "kipstukjes", 450, "g", brand_scores=brand_scores)
+        assert result["breakdown"]["brand"] == 0

@@ -28,7 +28,10 @@ from ah_api import AHApi
 
 
 # ── Skip terms (reused from ah_koopknop.py) ─────────────
-SKIP_TERMS = ["maaltijdmix", "honig mix", "babyvoeding", "aanbieding pakket", "mix pakket"]
+SKIP_TERMS = [
+    "maaltijdmix", "honig mix", "babyvoeding", "aanbieding pakket", "mix pakket",
+    "plantaardig", "terra", "vivera", "vegan", "vegetarisch",
+]
 
 # ── Pantry items (don't need to buy) ────────────────────
 PANTRY_ITEMS = {
@@ -76,6 +79,43 @@ CACHE_FILE = "matched_products.json"
 
 # ── Preferences file ───────────────────────────────────
 PREFERENCES_FILE = "preferences.json"
+
+# ── Ingredient aliases file ────────────────────────────
+ALIASES_FILE = "ingredient_aliases.json"
+
+
+def load_ingredient_aliases(path: str = ALIASES_FILE) -> dict[str, str]:
+    """Load ingredient alias mappings from JSON file.
+
+    Maps recipe ingredient names to preferred AH search terms.
+    For example: 'kipstukjes' -> 'AH scharrel kipfilet stukjes roerbak'.
+
+    Args:
+        path: Path to the aliases JSON file.
+
+    Returns:
+        Dict mapping ingredient names to AH search terms.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def resolve_alias(item: str, aliases: dict[str, str] | None = None) -> str:
+    """Resolve an ingredient name to its AH search alias if one exists.
+
+    Args:
+        item: The ingredient name from a recipe.
+        aliases: Optional pre-loaded alias dict. Loads from file if None.
+
+    Returns:
+        The AH search term if an alias exists, otherwise the original item.
+    """
+    if aliases is None:
+        aliases = load_ingredient_aliases()
+    return aliases.get(item.lower().strip(), item)
 
 
 def load_preferences(path: str = PREFERENCES_FILE) -> dict:
@@ -291,6 +331,10 @@ def score_product(product: dict, query: str, needed_qty: float,
                 scores["brand"] = min(15, brand_pts)
                 break
 
+    # AH huismerk title bonus: products starting with "AH " get extra points
+    if title.startswith("AH ") and scores["brand"] == 0:
+        scores["brand"] = min(15, brand_scores.get("AH", 8) if brand_scores else 8)
+
     total = sum(scores.values())
 
     return {
@@ -321,6 +365,10 @@ def find_best_product(api: AHApi, item: str, quantity: float = 1,
     avoid_terms = _get_avoid_terms(prefs)
     brand_scores = _get_brand_scores(prefs)
 
+    # Resolve ingredient alias for better AH search results
+    aliases = load_ingredient_aliases()
+    search_term = resolve_alias(item, aliases)
+
     # Check cache
     cache_key = f"{item.lower().strip()}|{quantity}|{unit}"
     if use_cache:
@@ -330,7 +378,7 @@ def find_best_product(api: AHApi, item: str, quantity: float = 1,
             # Return cached result if less than 7 days old (or no timestamp)
             return cached
 
-    products = api.search(query=item, size=15)
+    products = api.search(query=search_term, size=15)
 
     best = None
     best_score = -1
