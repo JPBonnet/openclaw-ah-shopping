@@ -215,7 +215,8 @@ def load_family_from_preferences(path: str = "preferences.json") -> list[FamilyM
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        family_data = data.get("family", [])
+        family_raw = data.get("family", [])
+        family_data = family_raw.get("members", family_raw) if isinstance(family_raw, dict) else family_raw
         if family_data:
             return [
                 FamilyMember(
